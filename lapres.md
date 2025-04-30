@@ -249,6 +249,8 @@ if (f) {
 - ``fprintf()`` disini kita gunakan untuk mencatatkan suatu output ke file yang sudah kita buka tadi lalu tidak lupa kita tutup access file nya dengan ``fclose()``.
 #### Output
 ![image](https://github.com/rdtzaa/assets/blob/1b4bb24a0e62baaa6dd4f1c22c2a62c2dfe56213/Sistem%20Operasi/modul-2-task3.png)
+#### Kendala
+Kendala pada poin A ini pertama kali persoalan muncul saya masih bingung untuk cara parsing dara JSON apakah parsing manual seperti menggunakan ``strstr()`` lalu ternyata terdapat library cJSON yang dapat digunakan untuk memparse data JSON dengan fungsi dari library tersebut.
 ### Poin B
 Cella ingin agar setiap file `.txt` tadi di-**zip** satu per satu dan disimpan ke dalam folder baru bernama `Archive`. Yang dimana nama masing masing dari zip diambil dari **huruf kapital nama file**.
 #### Solusi
@@ -514,9 +516,8 @@ void task3_all(char *json[], int jumlah_manhwa) {
 - ``pthread_join(threads[i], NULL);`` memastikan setiap thread berjalan dengan baik.
 #### Output
 ![image](https://github.com/rdtzaa/assets/blob/0eec955cb3eb9c64fffd6e7e883970166413b0c8/Sistem%20Operasi/modul-2-task3_c.png)
-
-### Kendala
-Pada poin C, saya sempat kesulitan untuk menentukan counter setiap ip karena ternyata di data ``peminjaman_komputer.csv`` setiap teman Rudi bisa berpindah komputer. Oleh karena itu, saya mengelompokkan terlebih dahulu berdasarkan tanggal dan IP lalu tanggal dan IP dicocokkan dengan data ``peminjaman_komputer.csv`` dan index counter adalah nama teman-teman nya.
+#### Kendala
+Pada poin C ini, saya kurang membaca soal bahwa download gambar ini berdasarkan urutan manhwa tidak hanya menggunakan thread yang bersama-sama sehingga untuk mengatasi ini saya menggunakan mutual exclusion untuk mengatur jalannya masing-masing thread.
 ### Poin D
 Setelah semua gambar heroine berhasil diunduh, Cella ingin mengarsipkannya:
 
@@ -675,5 +676,7 @@ Dua looping diatas hampir sama dimana perbedaaanya adalah pada bagian ``buat_zip
 #### Output
 ![image](https://github.com/rdtzaa/assets/blob/01662a663815c35c30f52b0584510d5925e4981e/Sistem%20Operasi/modul-2-task3_D.png)
 ![image](https://github.com/rdtzaa/assets/blob/01662a663815c35c30f52b0584510d5925e4981e/Sistem%20Operasi/modul2-task3_D01.png)
+#### Kendala
+Pada poin D ini, saya terkendala saat menzip dan menghapus file nya karena awalnya saya hanya dapat menzip beserta foldernya menggunakan ``zip -r`` dan menghapus gambar dari tiap heroines malah terhapus semua foldernya dengan ``rm -r`` lalu saya ubah logika saya tidak menjalankan satu fungs saja melainkan menggunakan looping dan menggunakan fungsi ``zip -j`` yang akan menzip dengan nama file spesifik lalu menggunakan fungsi ``remove()`` untuk menghapus file secara spesifik juga.
 
 
