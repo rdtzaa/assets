@@ -299,12 +299,6 @@ int idx = 8;
 - ``zip``, variabel ini kita gunakan untuk menyimpan direktori dari zip yang akan kita buat.
 - ``filename`` akan kita gunakan untuk menyimpan dari nama zip yang akan dibuat.
 - ``idx`` disini sebagai index dari karakter di variabel ``zip``.
-```bash
-number_pc=$(echo "$ip_address" | awk -F'.' '{print $4}')
-```
-- Inisialisasi variabel ``number_pc`` yang menyimpan nomor komputer berdasarkan ip address.
-- ``echo`` mencetak isi variabel ip address.
-- ``awk`` dengan pembatas tanda titik mengambil kolom ke empat yang merupakan angka ip terakhir sebagai nomor komputer.
 ```c
 format_txt(title, filename);
 strcat(dir, filename);
@@ -427,52 +421,259 @@ void task3_all(char *json[], int jumlah_manhwa) {
 }
 ```
 #### Penjelasan
-```bash
-str1=$(awk -F' ' 'BEGIN {months["Jan"]="01"}
-$9 ~ 500 {
-    tgl = substr($4, 2, 11)
-    split(tgl, splitted, "/")
-    peminjam = months[splitted[2]] "/" splitted[1] "/" splitted[3] " " substr($1, 11, 1)
-    count[peminjam]++
+```c
+struct thread {
+    char *folder;
+    char *name;
+    char *url;
+    int jumlah;
+};
+
+pthread_mutex_t download;
+```
+- Inisialisasi struct ``thread`` untuk menyimpan nama folder, FMC, url, dan bulan dari beberapa manhwa.
+- ``pthread_mutex_t download;`` menginisialisasi mutual exclusion untuk mengatur kerja dari masing-masing thread.
+```c
+void *download_heroine(void *arg) {
+    pthread_mutex_lock(&download);
+    struct thread *data = (struct thread *)arg;
+    for (int i = 1; i <= data->jumlah; i++) {
+        char filename[256];
+        snprintf(filename, sizeof(filename), "%s/%s_%d.jpg", data->folder, data->name, i);
+        pid_t pid = fork();
+        if (pid == 0) {
+            char *args[] = {"curl", "-s", "-L", data->url, "-o", filename, NULL};
+            printf("%s terdownload\n", filename);
+            execv("/usr/bin/curl", args);
+            exit(1);
+        } else {
+            wait(NULL);
+        }
+    }
+    pthread_mutex_unlock(&download);
+    return NULL;
 }
-END {for (i in count) print i " " count[i]}' access.log)
 ```
-- Inisialisasi variabel ``str1`` yang akan diisi log dengan ``Status Code 500`` dikelompokkan berdasarkan tanggal dan nomor komputer.
-- ``$9 ~ 500`` mencari baris yang memenuhi kondisi untuk melanjutkan fungsi.
-- ``tgl = substr($4, 2, 11)`` dan ``split(tgl, splitted, "/")`` untuk memisahkan perbagian tanggal dari ``access.log`` dengan menghilangkan tanda garis miring.
-- ``peminjam = months[splitted[2]] "/" splitted[1] "/" splitted[3] " " substr($1, 11, 1)`` membuat variabel peminjam sebagai index dengan format ``MM/DD/YYYY [Nomor Komputer]``
-- ``count[peminjam]++`` sebuah counter dengan index peminjam.
-- ``for (i in count) print i " " count[i]}' access.log`` mencetak tanggal, nomor komputer, dan jumlah aktivitas.
+Fungsi ini akan dijalankan dengan ``pthread_create()`` dengan parameter sebuah struct ``thread`. Disini juga diikuti dengan ``pthread_mutex_lock(&download);`` dan ``pthread_mutex_unlock(&download);`` yang mana fungsi ini akan membuat thread akan mendownload gambar secara urut.
+- ``for (int i = 1; i <= data->jumlah; i++)``, for loop disini akan berulang sebanyak angka bulan yang disimpan di struct.
+- ``snprintf(filename, sizeof(filename), "%s/%s_%d.jpg", data->folder, data->name, i)`` mengassign nilai yaitu berupa nama file dan direktori nya yang disesuaikan kriteria.
+- ``char *args[] = {"curl", "-s", "-L", data->url, "-o", filename, NULL};``, disini saya menggunakan curl untuk mendownload gambar tersebut dengan tambahan ``-s`` yang berarti mode silent dan ``-L`` adalah opsi untuk menyimpan di direktori tertentu.
+- ``execv("/usr/bin/curl", args)`` untuk menjalankan curl ini saya menggunakan ``fork()`` karena fungsi ``execv()`` ketika dijalankan maka kode setelahnya tidak dijalankan.
+```c
+void task3_all(char *json[], int jumlah_manhwa) {
+    buat_direktori("Heroines");
+
+    char *fmc[4] = {"Dellis", "Artizea", "Adelia", "Ophelia"};
+    char *url[4] = {
+        "https://cdn.anime-planet.com/characters/primary/lia-dellis-1-285x399.webp?t=1741126489",
+        "https://static.wikia.nocookie.net/the-villainess-lives-twice/images/e/e1/ArtizeaRosan.jpg/revision/latest?cb=20210407162325",
+        "https://i.pinimg.com/736x/96/bc/1c/96bc1c48cfa6ce0579495eca31ebf775.jpg",
+        "https://cdn.anime-planet.com/characters/primary/ophelia-lizen-1-285x399.webp?t=1744234317"
+    };
+
+    pthread_t threads[jumlah_manhwa];
+
+    for (int i = 0; i < jumlah_manhwa; i++) {
+        cJSON *json_data = cJSON_Parse(json[i]);
+        cJSON *data = cJSON_GetObjectItem(json_data, "data");
+
+        int month = 1;
+        cJSON *published = cJSON_GetObjectItem(data, "published");
+        cJSON *prop = cJSON_GetObjectItem(published, "prop");
+        cJSON *from = cJSON_GetObjectItem(prop, "from");
+        month = cJSON_GetObjectItem(from, "month")->valueint;
+
+
+        char folder[128];
+        snprintf(folder, sizeof(folder), "Heroines/%s", fmc[i]);
+        buat_direktori(folder);
+
+        struct thread *data_thread = malloc(sizeof(struct thread));
+        data_thread->folder = strdup(folder);
+        data_thread->name = strdup(fmc[i]);
+        data_thread->url = strdup(url[i]);
+        data_thread->jumlah = month;
+
+        pthread_create(&threads[i], NULL, download_heroine, data_thread);
+        cJSON_Delete(json_data);
+    }
+
+    for (int i = 0; i < jumlah_manhwa; i++) {
+        pthread_join(threads[i], NULL);
+    }
+    pthread_mutex_destroy(&download);
+}
 ```
-while read tanggal komputer aktivitas; do
-    index=$(awk -v tgl=$tanggal -v komp=$komputer -F',' '{if ($1 ~ tgl && $2 ~ komp) print $3}' peminjaman_computer.csv)
-    ((count[$index]+=$aktivitas))
-    # echo "${count[$index]}"
-done <<< "$str1"
-```
-- ``while read tanggal komputer aktivitas; do ... <<< "$str1"`` membaca tiap baris dari variabel ``str1`` dengan pemisah default nya adalah tanda spasi yang kemudian dimasukkan ke variabel tanggal, komputer, dan aktivitas.
-- ``index=$(awk -v tgl=$tanggal -v komp=$komputer -F',' '{if ($1 ~ tgl && $2 ~ komp) print $3}' peminjaman_computer.csv)`` membuat index berupa nama peminjam yang dicocokkan dengan tanggal dan nomor komputer yang ada di dalam data ``peminjaman_computer.csv``
-- ``((count[$index]+=$aktivitas))`` counter untuk menambah aktivitas berdasarkan nama peminjam.
-```bash
-for peminjam in "${!count[@]}"; do
-    echo "$peminjam mendapatkan Status Code 500 sebanyak ${count[$peminjam]} kali"
-    ((total+=count[$peminjam]))
-    if [[ $max_count -lt ${count[$peminjam]} ]]; then
-        max_count=${count[$peminjam]}
-        max_name=$peminjam
-    fi
-done
-```
-- Disini kita melakukan looping terhadap index count dengan cara ``${count[@]}``
-- ``echo`` disini untuk mencetak banyaknya ``Status Code 500`` yang ditemukan setiap orang melalui variabel peminjam
-- ``((total+=count[$peminjam]`` untuk menjumlah semua ``Status Code 500`` yang ditemukan.
-- ``if``, kondisi ini untuk menentukan siapa yang paling banyak menemukan sehingga berhak mendapat hadiah.
-```bash
-echo "Total Status Code yang ditemukan adalah $total kali"
-echo "Selamatt!!! $max_name mendapatkan hadiah dari Rudi"
-```
-Menampilkan total dan nama teman Rudi yang berhak mendapat hadiah.
+- ``buat_direktori("Heroines");`` dipanggil untuk membuat folder bernama Heroines.
+- Variabel ``fmc`` untuk menyimpan nama-nama Female Main Character dan ``url`` untuk menyimpan url gambar tiap heroines.
+- ``pthread_t threads[jumlah_manhwa];`` menginisialisasi thread untuk mendownload gambar setiap heroines.
+- ``month = cJSON_GetObjectItem(from, "month")->valueint;``, seperti pada task-task sebelumnya kita mengambil angka bulan sebagai banyak foto yang perlu di download dengan menggunakan library cJSON.
+- ``snprintf(folder, sizeof(folder), "Heroines/%s", fmc[i]);`` mengassign nilai ke variabel folder berupa ``Heroines/[NAMA_HEROINES]`` lalu akan digunakan untuk membuat direktori.
+- ``struct thread *data_thread = malloc(sizeof(struct thread));`` menginisialisasi struct yang akan digunakan thread nanti untuk mendowload file dan mengassign nilai dari pointer di dalam struct nya dengan ``strdup()``.
+- ``pthread_create(&threads[i], NULL, download_heroine, data_thread);`` digunakan untuk membuat proses thread mendowload gambar dengan fungsi ``download_heroine`` lalu didalam fungsi tersebut terdapat ``mutex`` agar bekerja secara urut``
+- ``pthread_join(threads[i], NULL);`` memastikan setiap thread berjalan dengan baik.
 #### Output
-![image](https://github.com/rdtzaa/assets/blob/e603d07387e822ee2f74d0e51ffaf069a5e84929/Sistem%20Operasi/rudi-c.png)
+![image](https://github.com/rdtzaa/assets/blob/0eec955cb3eb9c64fffd6e7e883970166413b0c8/Sistem%20Operasi/modul-2-task3_c.png)
+
 ### Kendala
 Pada poin C, saya sempat kesulitan untuk menentukan counter setiap ip karena ternyata di data ``peminjaman_komputer.csv`` setiap teman Rudi bisa berpindah komputer. Oleh karena itu, saya mengelompokkan terlebih dahulu berdasarkan tanggal dan IP lalu tanggal dan IP dicocokkan dengan data ``peminjaman_komputer.csv`` dan index counter adalah nama teman-teman nya.
+### Poin D
+Setelah semua gambar heroine berhasil diunduh, Cella ingin mengarsipkannya:
+
+- Setiap folder heroine di-zip dengan format:
+  ```
+  [HURUFKAPITALNAMAMANHWA]_[namaheroine].zip
+  ```
+- Disimpan di folder `Archive/Images`
+- Setelah zip selesai, gambar pada masing masing folder Heroine akan dihapus secara **urut dengan abjad**.
+#### Solusi
+```c
+struct heroine_info {
+    char name[128];
+    char filepath[256];
+    int month;
+    char kapital[64];
+};
+
+void task4(char *json[], int jumlah_manhwa) {
+    char* fmc[4] = {"Dellis", "Artizea", "Adelia", "Ophelia"};
+    buat_direktori("Archive/Images");
+
+    struct heroine_info heroines[4];
+
+    for (int i = 0; i < jumlah_manhwa; i++) {
+        cJSON *json_data = cJSON_Parse(json[i]);
+        cJSON *data = cJSON_GetObjectItem(json_data, "data");
+
+        char *title = cJSON_GetObjectItem(data, "title_english")->valuestring;
+
+        char title_tmp[64];
+        title_tmp[0] = '\0';
+        for (int j = 0; title[j] != '\0'; j++) {
+            if (title[j] >= 'A' && title[j] <= 'Z') {
+                strncat(title_tmp, &title[j], 1);
+            }
+        }
+
+        char folder[128];
+        snprintf(folder, sizeof(folder), "Heroines/%s", fmc[i]);
+
+        int month = 1;
+        cJSON *published = cJSON_GetObjectItem(data, "published");
+        cJSON *prop = cJSON_GetObjectItem(published, "prop");
+        cJSON *from = cJSON_GetObjectItem(prop, "from");
+        month = cJSON_GetObjectItem(from, "month")->valueint;
+
+        strncpy(heroines[i].name, fmc[i], sizeof(heroines[i].name));
+        strncpy(heroines[i].filepath, folder, sizeof(heroines[i].filepath));
+        strncpy(heroines[i].kapital, title_tmp, sizeof(heroines[i].kapital));
+        heroines[i].month = month;
+
+        cJSON_Delete(json_data);
+    }
+
+    qsort(heroines, 4, sizeof(heroines[0]), compare_heroine);
+
+    for (int i = 0; i < 4; i++) {
+        char zipname[512];
+        snprintf(zipname, sizeof(zipname), "Archive/Images/%s_%s.zip", heroines[i].kapital, heroines[i].name);
+
+        for (int j = 1; j <= heroines[i].month; j++) {
+            char filepath[512];
+            snprintf(filepath, sizeof(filepath), "%s/%s_%d.jpg", heroines[i].filepath, heroines[i].name, j);
+            buat_zip(zipname, filepath);
+        }
+    }
+    
+    for (int i = 0; i < 4; i++) {
+        char zipname[512];
+        snprintf(zipname, sizeof(zipname), "Archive/Images/%s_%s.zip", heroines[i].kapital, heroines[i].name);
+
+        for (int j = 1; j <= heroines[i].month; j++) {
+            char filepath[512];
+            snprintf(filepath, sizeof(filepath), "%s/%s_%d.jpg", heroines[i].filepath, heroines[i].name, j);
+            remove(filepath);
+            printf("%s terhapus\n", filepath);
+        }
+    }
+}
+
+```
+#### Penjelasan
+```c
+struct heroine_info {
+    char name[128];
+    char filepath[256];
+    int month;
+    char kapital[64];
+};
+void task4(char *json[], int jumlah_manhwa) {
+    ...
+    char* fmc[4] = {"Dellis", "Artizea", "Adelia", "Ophelia"};
+    buat_direktori("Archive/Images");
+    struct heroine_info heroines[4];
+    ...
+}
+```
+- Inisialisasi variabel string array ``fmc`` untuk menyimpan nama dari Heroines.
+- Panggil ``buat_direktori`` untuk membuat direktori di folder ``Archive`` bernama ``Images``.
+- Inisialisasi struct ``heroine_info`` untuk menyimpan nama heroines, filepath gambar, angka bulan, dan huruf kapital dari judul versi bahasa Inggris
+```c
+char *title = cJSON_GetObjectItem(data, "title_english")->valuestring;
+char title_tmp[64];
+title_tmp[0] = '\0';
+for (int j = 0; title[j] != '\0'; j++) {
+    if (title[j] >= 'A' && title[j] <= 'Z') {
+        strncat(title_tmp, &title[j], 1);
+    }
+}
+```
+- Looping disini untuk mengambil huruf kapital saja dari data judul versi bahasa inggris yang disimpan ke variabel ``title_tmp``.
+```c
+char folder[128];
+snprintf(folder, sizeof(folder), "Heroines/%s", fmc[i]);
+month = cJSON_GetObjectItem(from, "month")->valueint;
+strncpy(heroines[i].name, fmc[i], sizeof(heroines[i].name));
+strncpy(heroines[i].filepath, folder, sizeof(heroines[i].filepath));
+strncpy(heroines[i].kapital, title_tmp, sizeof(heroines[i].kapital));
+heroines[i].month = month;
+```
+- Menyimpan path folder gambar dari setiap heroines ke variabel ``folder``.
+- Mengambil angka bentuk integer bulan dengan fungsi ``cJSON_GetObjectItem``.
+- Menyimpan nama heroines, filepath gambar, angka bulan, dan huruf kapital judul ke struct ``heroines`` dengan ``strncpy()`` agar terhindar dari ukuran yang berlebihan.
+```c
+int compare_heroine(const void *a, const void *b) {
+    return strcmp(((struct heroine_info*)a)->name, ((struct heroine_info*)b)->name);
+}
+
+qsort(heroines, 4, sizeof(heroines[0]), compare_heroine);
+```
+- Dengan fungsi dari library ``stdlib`` yaitu berupa qsort kita akan mengurutkan struct berdasarkan nama agar dalam penghapusan file dapat berurutan secara abjad.
+```c
+    for (int i = 0; i < 4; i++) {
+        char zipname[512];
+        snprintf(zipname, sizeof(zipname), "Archive/Images/%s_%s.zip", heroines[i].kapital, heroines[i].name);
+
+        for (int j = 1; j <= heroines[i].month; j++) {
+            char filepath[512];
+            snprintf(filepath, sizeof(filepath), "%s/%s_%d.jpg", heroines[i].filepath, heroines[i].name, j);
+            buat_zip(zipname, filepath);
+        }
+    }
+    
+    for (int i = 0; i < 4; i++) {
+        for (int j = 1; j <= heroines[i].month; j++) {
+            char filepath[512];
+            snprintf(filepath, sizeof(filepath), "%s/%s_%d.jpg", heroines[i].filepath, heroines[i].name, j);
+            remove(filepath);
+            printf("%s terhapus\n", filepath);
+        }
+    }
+}
+```
+Dua looping diatas hampir sama dimana perbedaaanya adalah pada bagian ``buat_zip()`` dan ``remove()``. Untuk looping pertama disini kita akan membuat path zip di variabel ``zipname`` lalu menzip gambar dari path gambar dari variabel ``filepath``. Kemudian, loop kedua akan langsung menghapus path gambar yang dituju oleh variabel ``filepath``.
+#### Output
+![image](https://github.com/rdtzaa/assets/blob/01662a663815c35c30f52b0584510d5925e4981e/Sistem%20Operasi/modul-2-task3_D.png)
+![image](https://github.com/rdtzaa/assets/blob/01662a663815c35c30f52b0584510d5925e4981e/Sistem%20Operasi/modul2-task3_D01.png)
+
+
