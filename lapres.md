@@ -50,6 +50,7 @@ char* fetch_json(char* url) {
     return chunk.memory;
 }
 ```
+- Pada kode diatas, terdapat struct ``memory`` yang berfungsi menyimpan isi jSON dari API yang kita miliki. Disini, kita menggunakan library ``cJSON`` untuk mendapatkan informasi dari API tersebut. ``CURLOPT_WRITEFUNCTION`` disini berfungsi mengambil berupa memory dari jSON yang kita dapat kemudian kita salin ke struct kita dengan ``CURL_WRITEDATA`` lalu setelah itu kita mengembalikan nilai memory saja karena yang kita perlukan hanya isi dari jSON tersebut.
 ##### ``Fungsi zip suatu file``
 ```c
 void buat_zip(char* name, char* dest) {
@@ -64,6 +65,7 @@ void buat_zip(char* name, char* dest) {
     }
 }
 ```
+- Fungsi diatas ini berguna untuk membuat zip dari suatu file sesuai dengan parameter yang ada. ``name`` disini bisa berupa nama zip sekaligus letak direktori nya lalu ``dest`` disini berupa file yang akan di-zip menuju variabel ``name``.
 ##### ``Fungsi membuat direktori``
 ```c
 void buat_direktori(char* folder) {
@@ -77,6 +79,7 @@ void buat_direktori(char* folder) {
     }
 }
 ```
+- Fungsi ini diatas ini berguna untuk membuat direktori baru berdasarkan parameter yang ada yaitu berupa ``folder`` yang bisa berisi nama folder atau beserta di direktori mana ingin membuat direktori baru tersebut.
 ##### ``Fungsi mengganti spasi menjadi underscore(_) dan menghilangkan karakter khusus``
 ```c
 void format_txt(char *a, char *b) {
@@ -94,6 +97,7 @@ void format_txt(char *a, char *b) {
     strcat(b, ".txt");
 }
 ```
+- Fungsi ini akan berguna di beberapa poin persoalan yang berguna untuk mengganti spasi dengan underscore (_) lalu menghilangkan karakter khusus dari sebuat string.
 ### Poin A (Summoning the Manhwa Stats)
 Cella ingin mengambil data detail dari **manhwa** menggunakan [API Jikan](https://docs.api.jikan.moe/). Informasi yang diambil:
 
@@ -175,22 +179,74 @@ void task1(char *json) {
 }
 ```
 #### Penjelasan
-```bash
-str1=$(cat access.log | awk '{print $1}'
+```c
+cJSON *json_data = cJSON_Parse(json);
+cJSON *data = cJSON_GetObjectItem(json_data, "data");
 ```
-- ``str1=${...}`` untuk menyimpan data hasil operasi yang berada di dalam tanda kurung kurawal.
-- ``cat.access.log`` untuk mencetak isi dari file ``access.log`` berupa log akses sebuah web.
-- ``awk '{print $1}'`` untuk mencetak kolom pertama dari hasil dari cetakan ``cat`` sebelumnya yaitu berupa ip address.
-```bash
-awk '{count[$1]++} END {for (ip in count) print "Jumlah request dari", ip, "=", count[ip]}')
+- ``cJSON_Parse(json)`` untuk menyimpan data JSON yang sudah dipisah-pisah perbagian sehingga data JSON dapat dioperasikan untuk mencari bagian tertentu.
+- ``cJSON_GetObjectItem(json_data, "data")`` untuk mengambil bagian dengan kata kunci ``data`` yang berisi data dari manhwa itu sendiri.
+```c
+char *status = cJSON_GetObjectItem(data, "status")->valuestring;
+char *title = cJSON_GetObjectItem(data, "title_english")->valuestring;
 ```
-Fungsi ``awk`` disini membuat sebuah variabel yang akan increment dengan index yang berasal dari kolom pertama hasil cetakan operasi sebelumnya. Di bagian ``END`` yang akan dijalankan setelah semua baris data dilewati, kita menambahkan looping terhadap index yang terdapat pada variabel ``count`` dengan cara ``(ip in count)`` lalu kita cetak jumlah request setiap ip.
-```bash
-str2=$(cat access.log | awk '{count[$9]++} END {for (code in count) print "Jumlah status code", code, "=", count[code]}')
+- Menginisialisai variabel ``char *`` yang berfungsi menyimpan alamat memori yang berupa string.
+- ``cJSON_GetObjectItem(data, <kata_kunci>)->valuestring``, fungsi dari library cJSON ini kita akan memfilter kembali JSON yang sudah di uraikan tadi menjadi lebih spesifik dengan kata kunci tertentu, lalu ``->valuestring`` kita dapat mengambil data nya dengan tambahan pointer ke value nya. Disini kita akan mengambil judul versi bahasa Inggris dan status manhwa tersebut.
+```c
+cJSON *published = cJSON_GetObjectItem(data, "published");
+int year = 0, month = 0, day = 0;
+if (published) {
+    cJSON *prop = cJSON_GetObjectItem(published, "prop");
+    cJSON *from = cJSON_GetObjectItem(prop, "from");
+    year = cJSON_GetObjectItem(from, "year")->valueint;
+    month = cJSON_GetObjectItem(from, "month")->valueint;
+    day = cJSON_GetObjectItem(from, "day")->valueint;
+}
 ```
-- ``str2=${....}`` untuk menyimpan data hasil operasi yang berada di dalam tanda kurung kurawal.
-- ``cat.access.log`` untuk mencetak isi dari file ``access.log`` berupa log akses sebuah web.
-- ``awk`` disini diikuti operasi seperti di variabel ``str1`` yaitu kita membuat variabel counter tetapi disini index nya adalah kolom ke sembilan dari file log yaitu status code nya. Di bagian ``END`` hampir sama dengan variabel ``str1`` juga, kita akan melakukan looping terhadap index-index yang ada dalam variabel ``count`` dengan cara ``(code in count)`` lalu kita cetak jumlah dari setiap status code.
+Bagian ini diawali kita menginisialisasi variabel integer untuk menyimpan tahun, bulan, dan hari. Kita juga membuat variabel ``cJSON`` yang mengambil bagian ``published`` yang mana di dalam bagian tersebut terdapat tanggal terbit manhwa tersebut.
+- ``cJSON *prop = cJSON_GetObjectItem(published, "prop")`` dan ``cJSON *from = cJSON_GetObjectItem(prop, "from");`` dua fungsi ini akan memperkecil yaitu fokus pada isi ``prop`` yang berisi tanggal pertama kali publish.
+- ``cJSON_GetObjectItem(from, <kata_kunci>)->valueint``, fungsi ini kita gunakan untuk mengambil isi dari objek sesuai kata kunci yaitu berupa year, month, atau day yang berupa integer.
+```c
+char genres[512], authors[512], themes[512];
+genres[0] = '\0';
+authors[0] = '\0';
+themes[0] = '\0';
+cJSON *genres_tmp = cJSON_GetObjectItem(data, "genres");
+cJSON *authors_tmp = cJSON_GetObjectItem(data, "authors");
+cJSON *themes_tmp = cJSON_GetObjectItem(data, "themes");
+```
+Bagian ini berupa inisialisasi beberapa variabel berupa ``cJSON`` dan ``char`` yang mana masing-masing akan kita operasikan.
+```c
+cJSON_ArrayForEach(item, genres_tmp) {
+    char *name = cJSON_GetObjectItem(item, "name")->valuestring;
+    if (strlen(genres) > 0) {
+        strcat(genres, ", ");
+    }
+    strcat(genres, name);
+}
+```
+Fungsi ``cJSON_ArrayForEach(item, genres_tmp)`` ini akan mengecek setiap array yang ada di variabel ``genres_temp`` yang sementara elemen-elemen yang ada didalamnya akan disimpan di variabel ``item``. Lalu, kita lanjutkan mengambil objek berupa ``name`` yang merupakan isi nama-nama dari genre, author, ataupun tema manhwa tersebut. Disini kita tambahkan kondisi ``strlen(genres) > 0`` karena manhwa memungkinkan memiliki lebih dari satu objek nama dari setiap genre, author, ataupun manhwa. Kita gunakan ``strcat()`` untuk secara teratur menambah ke akhir string. Fungsi ini kita gunakan juga untuk mengambil data untuk authors dan themes.
+```c
+char dir[256] = "Manhwa/";
+char filename[128];
+buat_direktori("Manhwa");
+format_txt(title, filename);
+strcat(dir, filename);
+
+FILE *f = fopen(dir, "w");
+if (f) {
+    fprintf(f, "Title: %s\n", title);
+    fprintf(f, "Status: %s\n", status);
+    fprintf(f, "Release: %d-%02d-%02d\n", year, month, day);
+    fprintf(f, "Genres: %s\n", genres);
+    fprintf(f, "Theme: %s\n", themes);
+    fprintf(f, "Authors: %s\n", authors);
+    fclose(f);
+}
+```
+- Kita inisialisasi variabel ``dir`` yang awalnya hanya berisi ``Manhwa/`` karena untuk isi selanjutnya akan kita isi dengan fungsi ``format_txt()`` yang saya buat diawal untuk mengubah nama judul sesuai kriteria yaitu tanpa spasi dan karakter khusus.
+- Disini kita juga menggunakan fungsi ``buat_direktori()`` untuk memudahkan kita dalam membuat direktori baru tanpa ``mkdir()``.
+- ``fopen(dir, "w")`` disini berguna untuk membuka file .txt yang nama file nya sudah sesuai kriteria dengan access "write" yaitu akan mengganti isi dari txt dengan isi yang baru.
+- ``fprintf()`` disini kita gunakan untuk mencatatkan suatu output ke file yang sudah kita buka tadi lalu tidak lupa kita tutup access file nya dengan ``fclose()``.
 #### Output
 ![image](https://github.com/rdtzaa/assets/blob/e603d07387e822ee2f74d0e51ffaf069a5e84929/Sistem%20Operasi/rudi-a.png)
 ### Poin B
