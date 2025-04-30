@@ -248,208 +248,183 @@ if (f) {
 - ``fopen(dir, "w")`` disini berguna untuk membuka file .txt yang nama file nya sudah sesuai kriteria dengan access "write" yaitu akan mengganti isi dari txt dengan isi yang baru.
 - ``fprintf()`` disini kita gunakan untuk mencatatkan suatu output ke file yang sudah kita buka tadi lalu tidak lupa kita tutup access file nya dengan ``fclose()``.
 #### Output
-![image](https://github.com/rdtzaa/assets/blob/e603d07387e822ee2f74d0e51ffaf069a5e84929/Sistem%20Operasi/rudi-a.png)
+![image](https://github.com/rdtzaa/assets/blob/1b4bb24a0e62baaa6dd4f1c22c2a62c2dfe56213/Sistem%20Operasi/modul-2-task3.png)
 ### Poin B
-Karena banyaknya status code error, Rudi ingin tahu siapa yang menemukan error tersebut. Setelah melihat-lihat, ternyata IP komputer selalu sama. Dengan bantuan [peminjaman_komputer.csv](https://drive.google.com/file/d/1-aN4Ca0M3IQdp6xh3PiS_rLQeLVT1IWt/view?usp=drive_link), Rudi meminta kamu untuk membuat sebuah program bash yang akan menerima inputan tanggal dan IP serta menampilkan siapa pengguna dan membuat file backup log aktivitas, dengan format berikut:
-
-- **Tanggal** (format: `MM/DD/YYYY`)
-
-- **IP Address** (format: `192.168.1.X`, karena menggunakan jaringan lokal, di mana `X` adalah nomor komputer)
-
-- Setelah pengecekan, program akan memberikan **message pengguna dan log aktivitas** dengan format berikut:
-
-  ```
-  Pengguna saat itu adalah [Nama Pengguna Komputer]
-  Log Aktivitas [Nama Pengguna Komputer]
-  ```
-
-  atau jika data tidak ditemukan:
-
-  ```
-  Data yang kamu cari tidak ada
-  ```
-
-- File akan disimpan pada directory “/backup/[Nama file]”, dengan format nama file sebagai berikut
-
-  ```
-  [Nama Pengguna Komputer]_[Tanggal Dipilih (MMDDYYY)]_[Jam saat ini (HHMMSS)].log
-  ```
-
-- Format isi log
-
-  ```
-  [dd/mm/yyyy:hh:mm:ss]: Method - Endpoint - Status Code
-  ```
+Cella ingin agar setiap file `.txt` tadi di-**zip** satu per satu dan disimpan ke dalam folder baru bernama `Archive`. Yang dimana nama masing masing dari zip diambil dari **huruf kapital nama file**.
 #### Solusi
-```bash
-#!/bin/bash
+```c
+void task2(char *json) {
+    cJSON *json_data = cJSON_Parse(json);
+    cJSON *data = cJSON_GetObjectItem(json_data, "data");
+    buat_direktori("Archive");
 
-convert_date_format() {
-    temp_date=$1
-    month=${temp_date:0:2}
-    day=${temp_date:3:2}
-    year=${temp_date:6:4}
+    char *title = cJSON_GetObjectItem(data, "title_english")->valuestring;
+    char dir[256] = "Manhwa/";
+    char filename[128];
+    char zip[128] = "Archive/";
+    int idx = 8;
 
-    months=("Jan")
-    month_name=${months[$((month-1))]}
-    formatted_date="$day/$month_name/$year"
+    format_txt(title, filename);
+    strcat(dir, filename);
 
-    echo "$formatted_date"
+    for (int i = 0; filename[i] != '\0'; i++) {
+        if (filename[i] >= 'A' && filename[i] <= 'Z') {
+            zip[idx] = filename[i];
+            idx++;
+        }
+    }
+    zip[idx] = '\0';
+    strcat(zip, ".zip");
+
+    buat_zip(zip, dir);
+
+    cJSON_Delete(json_data);
 }
-
-echo -e "Masukkan tanggal (MM/DD/YYYY)"
-read tanggal
-echo -e "Masukkan IP Address (192.168.1.X)"
-read ip_address
-
-number_pc=$(echo "$ip_address" | awk -F'.' '{print $4}')
-
-echo "Nomor komputer berdasarkan IP adalah: $number_pc"
-
-nama_pengguna=$(grep "$tanggal,$number_pc" peminjaman_computer.csv | awk -F',' '{print $3}')
-
-if [ -z "$nama_pengguna" ]; then
-    echo "Nama pengguna tidak ditemukan"
-else
-    echo "Pengguna saat itu adalah $nama_pengguna"
-    echo "Log Aktivitas $nama_pengguna"
-    formatted_date=$(convert_date_format "$tanggal")
-    waktu=$(date | awk '{print $4}' | awk -F':' '{print $1$2$3}')
-    dir="${nama_pengguna}_$(echo $tanggal | awk -F'/' '{print $1$2$3}')_$waktu.log"
-    mkdir -p "backup"
-    awk -v tgl=$formatted_date -v ip=$ip_address '
-        $1 == ip && $4 ~ tgl {
-        date = substr($4, 2, 20)
-        metohod = substr($6, 2)
-        print "[" date "]:", metohod, "-", $7, "-", $9}' access.log > backup/$dir
-    echo "$dir berhasil dibuat"
-fi
 ```
 #### Penjelasan
-```bash
-convert_date_format() {
-    temp_date=$1
-    month=${temp_date:0:2}
-    day=${temp_date:3:2}
-    year=${temp_date:6:4}
-
-    months=("Jan")
-    month_name=${months[$((month-1))]}
-    formatted_date="$day/$month_name/$year"
-
-    echo "$formatted_date"
-}
+```c
+    cJSON *json_data = cJSON_Parse(json);
+    cJSON *data = cJSON_GetObjectItem(json_data, "data");
+    buat_direktori("Archive");
+    char *title = cJSON_GetObjectItem(data, "title_english")->valuestring;
 ```
-Inisialisasi fungsi ``convert_date_format()`` untuk mengganti format tanggal dari ``MM/DD/YYYY`` menjadi ``DD/nama bulan/YYYY``.
-- ``month=${temp_date:0:2}``, assign variabel ``month`` dengan cara mengambil 2 huruf mulai index 0 berupa bulan dari sebuah input tanggal fungsi tersebut.
-- ``day=${temp_date:3:2}``, assign variabel ``day`` dengan cara mengambil 2 huruf mulai index 3 berupa hari dari sebuah input tanggal fungsi tersebut.
-- ``year=${temp_date:6:4}``, assign variabel ``year`` dengan cara mengambil 4 huruf mulai index 6 berupa tahun dari sebuah input tanggal fungsi tersebut.
-- ``months=("Jan")`` variabel array untuk convert bulan dari angka menjadi nama bulan.
-- ``month_name=${months[$((month-1))]}``, operasi untuk convert angka bulan dengan cara memasukkan angka bulan yang sudah kita simpan di variabel ``month`` ke dalam index lalu kita kurangi satu karena array dimulai dari index 0 sedangkan angka bulan Januari adalah "1".
-- ``formatted_date="$day/$month_name/$year"`` assign ke sebuah variabel dengan format yang sesuai yaitu ``DD/nama_bulab/YYYY``
-- ``echo "$formatted_date"``, fungsi untuk mencetak hasil dari convert tanggal.
-```bash
-echo -e "Masukkan tanggal (MM/DD/YYYY)"
-read tanggal
-echo -e "Masukkan IP Address (192.168.1.X)"
-read ip_address
+Sama halnya dengan poin A disini kita perlu menguraikan dulu data dari JSON yang sudah kita dapatkan lalu kita ambil bagian ``data`` saja. Disini diikut fungsi ``buat_direktori("Archive)`` karena pada poin B ini kita akan menyimpan ke direktori ``Archive``. Lalu kita pertama-tama akan mengambil judul versi bahasa Inggris terlebih dahulu.
+```c
+char dir[256] = "Manhwa/";
+char filename[128];
+char zip[128] = "Archive/";
+int idx = 8;
 ```
-- ``echo`` bagian tersebut merupakan bagian untuk menerima input diawal dengan tambahan ``-e`` agar ketika di dalam terminal inputan kita dapat berada di samping cetakan ``echo``.
-- ``read`` disini berfungsi untuk menyimpan hasil input dari user kedalam suatu variabel.
-- Input yang diterima disini terdapat tanggal dengan format ``(MM/DD/YYYY)`` dan ip address dengan format ``(192.168.1.X)``
+- ``dir`` variabel ini akan kita gunakan untuk menunjuk direktori dari file .txt yang sudah kita punya.
+- ``zip``, variabel ini kita gunakan untuk menyimpan direktori dari zip yang akan kita buat.
+- ``filename`` akan kita gunakan untuk menyimpan dari nama zip yang akan dibuat.
+- ``idx`` disini sebagai index dari karakter di variabel ``zip``.
 ```bash
 number_pc=$(echo "$ip_address" | awk -F'.' '{print $4}')
 ```
 - Inisialisasi variabel ``number_pc`` yang menyimpan nomor komputer berdasarkan ip address.
 - ``echo`` mencetak isi variabel ip address.
 - ``awk`` dengan pembatas tanda titik mengambil kolom ke empat yang merupakan angka ip terakhir sebagai nomor komputer.
-```bash
-nama_pengguna=$(grep "$tanggal,$number_pc" peminjaman_computer.csv | awk -F',' '{print $3}')
+```c
+format_txt(title, filename);
+strcat(dir, filename);
 ```
-- ``nama_pengguna`` sebuah variabel yang digunakan untuk menyimpan nama pengguna komputer berdasarkan ip address dan tanggal peminjaman.
-- ``grep`` disini akan mengambil baris data dari ``peminjaman_computer.csv`` yang memiliki pola ``"$tanggal,$number_pc"`` sehingga kita dapat mencetak nama pengguna yang berada di kolom ke 3 file csv tersebut.
-```bash
-if [ -z "$nama_pengguna" ]; then
-    echo "Nama pengguna tidak ditemukan"
-else
-    echo "Pengguna saat itu adalah $nama_pengguna"
-    echo "Log Aktivitas $nama_pengguna"
-```
-``if [ -z .... ]`` berfungsi untuk melihat apakah variabel tersebut kosong atau tidak. Sesuai ketentuan, kita akan mencetak "Nama pengguna tidak ditemukan" karena variabel ``nama_pengguna`` kosong yang artinya tidak ada kecocokan di file ``peminjaman_computer.csv`` begitu juga sebaliknya akan mengeluarkan output sesuai ketentuan soal diatas.
-```bash
-waktu=$(date | awk '{print $4}' | awk -F':' '{print $1$2$3}')
-```
-Variabel waktu ini akan diisi waktu saat script ini dijalankan dengan menggunakan command ``date`` yang kemudian akan kita ambil bagian waktu dan memisahkan tanda titik dua nya juga dengan ``awk``
-```bash
-dir="${nama_pengguna}_$(echo $tanggal | awk -F'/' '{print $1$2$3}')_$waktu.log"
-```
-Dengan format file yang diminta adalah ``[Nama Pengguna Komputer]_[Tanggal Dipilih (MMDDYYY)]_[Jam saat ini (HHMMSS)].log`` maka saya masukkan bagian nama penggunakan komputer dengan variabel ``nama_pengguna``, tanggal dengan variabel ``$tanggal`` yang ditambahkan ``awk`` untuk menghilangkan tanda garis miring, dan jam saat ini dengan variabel ``waktu``.
-```bash
-mkdir -p "backup"
-```
-- ``mkdir`` disini untuk membuat folder bernama "backup" yang akan digunakan untuk menyimpan file log yang dicari dan disini ditambah ``-p`` yang mana ini untuk cek apakah directory tersebut ada dan jika ada dia tidak akan membuat folder lagi dan sebaliknya juga.
-```bash
-awk -v tgl=$formatted_date -v ip=$ip_address '
-  $1 == ip && $4 ~ tgl {
-  date = substr($4, 2, 20)
-  metohod = substr($6, 2)
-  print "[" date "]:", metohod, "-", $7, "-", $9}' access.log > backup/$dir
-```
-- ``awk -v [variabel]`` disini untuk membuat file log berdasarkan format dan kita juga menambahkan suatu variabel ke dalam ``awk``
-- ``$1 == ip && $4 ~ tgl`` kondisi ini akan cek apakah kolom pertama dan kolom keempat dari tiap baris data ``access.log`` sudah sesuai dengan ip address dan tanggal yang ditentukan maka akan dilanjut proses yang ada di dalam tanda kurung kurawal setelahnya.
-- ``date = substr($4, 2, 20)`` variabel date ini akan diisi dengan tanggal beserta hari sesuai format isi log yang diharapkan yaitu ``[dd/mm/yyyy:hh:mm:ss]``
-- ``metohod = substr($6, 2)`` variabel method ini akan diisi oleh metode log akses web seperti ``DELETE``.
-- ``print "[" date "]:", metohod, "-", $7, "-", $9}' access.log > backup/$dir`` disini akan mencetak data dengan format yang diharapkan yaitu ``[dd/mm/yyyy:hh:mm:ss]: Method - Endpoint - Status Code`` lalu dimasukkan ke dalam file log sesuai format juga.
-#### Input & Output
-![image](https://github.com/rdtzaa/assets/blob/e603d07387e822ee2f74d0e51ffaf069a5e84929/Sistem%20Operasi/rudi-b.png)
-##### ``Caca_01262025_203527.log``
-```
-[26/Jan/2025:00:02:06]: GET - /index.html - 200
-[26/Jan/2025:00:02:11]: GET - /login - 500
-[26/Jan/2025:00:02:13]: PUT - /contact - 200
-[26/Jan/2025:00:06:38]: PUT - /about.html - 200
-[26/Jan/2025:00:09:24]: DELETE - /about.html - 200
-[26/Jan/2025:00:11:13]: PUT - /contact - 200
-[26/Jan/2025:00:11:56]: GET - /login - 200
-[26/Jan/2025:00:12:48]: POST - /index.html - 200
-[26/Jan/2025:00:16:05]: POST - /about.html - 302
-[26/Jan/2025:00:17:47]: PUT - /login - 302
-[26/Jan/2025:00:20:23]: PUT - /about.html - 404
-...
-```
-### Poin C
-Rudi ingin memberikan hadiah kepada temannya yang sudah membantu. Namun karena dana yang terbatas, Rudi hanya akan memberikan hadiah kepada teman yang berhasil menemukan server error dengan ``Status Code 500`` terbanyak. Bantu Rudi untuk menemukan siapa dari ketiga temannya yang berhak mendapat hadiah dan tampilkan jumlah ``Status Code 500`` yang ditemukan
-#### Solusi
-```bash
-#!/bin/bash
-declare -A count
-
-str1=$(awk -F' ' 'BEGIN {months["Jan"]="01"}
-$9 ~ 500 {
-    tgl = substr($4, 2, 11)
-    split(tgl, splitted, "/")
-    peminjam = months[splitted[2]] "/" splitted[1] "/" splitted[3] " " substr($1, 11, 1)
-    count[peminjam]++
+- Dengan fungsi ``format_txt()`` yang akan mengubah nama judul sesuai dengan kriteria lalu kita gabungkan dengan ``strcat()`` ke variabel ``dir``.
+```c
+for (int i = 0; filename[i] != '\0'; i++) {
+    if (filename[i] >= 'A' && filename[i] <= 'Z') {
+        zip[idx] = filename[i];
+        idx++;
+    }
 }
-END {for (i in count) print i " " count[i]}' access.log)
+zip[idx] = '\0';
+strcat(zip, ".zip");
+```
+Looping disini untuk mengisi variabel ``zip`` sesuai dengan kriteria nama zip yang diminta yaitu hanya huruf kapital dari judul versi bahasa Inggris dengan cara kita menambahkan kondisi ``filename[i] >= 'A' && filename[i] <= 'Z'``. Lalu di akhir kita akan menambahkan ``.zip`` ke akhir variabel ``dir``.
+```c
+buat_zip(zip, dir);
+```
+Fungsi ini akan membuat zip dari file .txt yang berada di folder ``Manhwa/`` dan akan di zip ke folder ``Archive/``.
+#### Output
+![image](https://github.com/rdtzaa/assets/blob/53d6eb666317ec2684290fab5187f9157e05fc39/Sistem%20Operasi/modul-2-task3_b.png)
+### Poin C
+Setiap manhwa memiliki heroine alias **Female Main Character (FMC)**. Cella ingin mengunduh gambar heroine dari internet, dengan jumlah unduhan sesuai dengan **bulan rilis manhwa**.
 
-while read tanggal komputer aktivitas; do
-    index=$(awk -v tgl=$tanggal -v komp=$komputer -F',' '{if ($1 ~ tgl && $2 ~ komp) print $3}' peminjaman_computer.csv)
-    ((count[$index]+=$aktivitas))
-    # echo "${count[$index]}"
-done <<< "$str1"
+**Contoh:**
 
-for peminjam in "${!count[@]}"; do
-    echo "$peminjam mendapatkan Status Code 500 sebanyak ${count[$peminjam]} kali"
-    ((total+=count[$peminjam]))
-    if [[ $max_count -lt ${count[$peminjam]} ]]; then
-        max_count=${count[$peminjam]}
-        max_name=$peminjam
-    fi
-done
+- Jika rilis bulan Februari → unduh **2 foto**
+- Jika rilis bulan Desember → unduh **12 foto**
+- Format nama file: `Heroine_1.jpg`, `Heroine_2.jpg`, dst.
 
-echo "Total Status Code yang ditemukan adalah $total kali"
-echo "Selamatt!!! $max_name mendapatkan hadiah dari Rudi"
+Selain itu, Cella ingin melakukan pengunduhan **sesuai urutan** daftar manhwa yang tertera pada deskripsi di atas, dan proses pengunduhan harus menggunakan **thread**, karena Cella malas menunggu. Sebagai contohnya, gambar heroine dari manhwa Mistaken as the Monster Duke's Wife harus diunduh terlebih dahulu dan tidak boleh didahului oleh gambar heroine dari manhwa lainnya.
+
+Seluruh gambar akan disimpan dalam folder Heroines. Di dalam folder Heroines, akan terdapat subfolder dengan nama depan atau nama panggilan heroine dari masing-masing manhwa.
+
+Struktur folder yang diinginkan:
+
+```
+Heroines/
+├── Alisha/
+│   ├── Alisha_1.jpg
+│   └── Alisha_2.jpg
+└── Dorothea/
+    ├── Dorothea_1.jpg
+    └── Dorothea_2.jpg
+```
+#### Solusi
+```c
+struct thread {
+    char *folder;
+    char *name;
+    char *url;
+    int jumlah;
+};
+
+pthread_mutex_t download;
+
+void *download_heroine(void *arg) {
+    pthread_mutex_lock(&download);
+    struct thread *data = (struct thread *)arg;
+    for (int i = 1; i <= data->jumlah; i++) {
+        char filename[256];
+        snprintf(filename, sizeof(filename), "%s/%s_%d.jpg", data->folder, data->name, i);
+        pid_t pid = fork();
+        if (pid == 0) {
+            char *args[] = {"curl", "-s", "-L", data->url, "-o", filename, NULL};
+            printf("%s terdownload\n", filename);
+            execv("/usr/bin/curl", args);
+            exit(1);
+        } else {
+            wait(NULL);
+        }
+    }
+    pthread_mutex_unlock(&download);
+    return NULL;
+}
+
+void task3_all(char *json[], int jumlah_manhwa) {
+    buat_direktori("Heroines");
+
+    char *fmc[4] = {"Dellis", "Artizea", "Adelia", "Ophelia"};
+    char *url[4] = {
+        "https://cdn.anime-planet.com/characters/primary/lia-dellis-1-285x399.webp?t=1741126489",
+        "https://static.wikia.nocookie.net/the-villainess-lives-twice/images/e/e1/ArtizeaRosan.jpg/revision/latest?cb=20210407162325",
+        "https://i.pinimg.com/736x/96/bc/1c/96bc1c48cfa6ce0579495eca31ebf775.jpg",
+        "https://cdn.anime-planet.com/characters/primary/ophelia-lizen-1-285x399.webp?t=1744234317"
+    };
+
+    pthread_t threads[jumlah_manhwa];
+
+    for (int i = 0; i < jumlah_manhwa; i++) {
+        cJSON *json_data = cJSON_Parse(json[i]);
+        cJSON *data = cJSON_GetObjectItem(json_data, "data");
+
+        int month = 1;
+        cJSON *published = cJSON_GetObjectItem(data, "published");
+        cJSON *prop = cJSON_GetObjectItem(published, "prop");
+        cJSON *from = cJSON_GetObjectItem(prop, "from");
+        month = cJSON_GetObjectItem(from, "month")->valueint;
+
+
+        char folder[128];
+        snprintf(folder, sizeof(folder), "Heroines/%s", fmc[i]);
+        buat_direktori(folder);
+
+        struct thread *data_thread = malloc(sizeof(struct thread));
+        data_thread->folder = strdup(folder);
+        data_thread->name = strdup(fmc[i]);
+        data_thread->url = strdup(url[i]);
+        data_thread->jumlah = month;
+
+        pthread_create(&threads[i], NULL, download_heroine, data_thread);
+        cJSON_Delete(json_data);
+    }
+
+    for (int i = 0; i < jumlah_manhwa; i++) {
+        pthread_join(threads[i], NULL);
+    }
+    pthread_mutex_destroy(&download);
+}
 ```
 #### Penjelasan
 ```bash
