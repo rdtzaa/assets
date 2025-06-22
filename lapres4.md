@@ -168,6 +168,8 @@ static int xmp_getattr(const char *path, struct stat *stbuf);
 ```
 - Kedua fungsi ini memiliki cara kerja yang sama yaitu membutuhkan nama file berekstensi sehingga akan memanggil fungsi `complete_name()` dan digabung ke path direktori asli.
 - Untuk `xmp_open` akan menggunakan fungsi `open()` dan `xmp_getattr` akan menggunakan fungsi `lstat`.
+#### Output
+![image](https://github.com/rdtzaa/assets/blob/06accd89cc5f5b3174ab0da073d385049b12c202/Sistem%20Operasi/task2_a.png)
 
 ### b. Akses Berbasis Waktu untuk File Secret
 
@@ -204,6 +206,12 @@ int is_work_hours()
 - Kita gunakan fungsi `time()` dan mengambil angka hour dari struct yang dihasilkan lalu kita cek apakah angka hour berada diantara jam akses yang ditentukan.
 
 Fungsi-fungsi diatas akan dipanggil diawal di fungsi `xmp_getattr`, `xmp_access`, `xmp_open`, `xmp_readdir`, dan `xmp_read` yang mana fungsi-fungsi tersebut yang mengatasi ketika user akan membaca suatu file atau mengecek suatu file seperti `ls` dan `cat`.
+#### Output
+- Akses berhasil:
+![image](https://github.com/rdtzaa/assets/blob/06accd89cc5f5b3174ab0da073d385049b12c202/Sistem%20Operasi/akses_acc.png)
+
+- Akses gagal:
+![image](https://github.com/rdtzaa/assets/blob/06accd89cc5f5b3174ab0da073d385049b12c202/Sistem%20Operasi/akses_acc.png)
 
 ### c. Filtering Konten Dinamis
 
@@ -353,6 +361,8 @@ static int xmp_read(const char *path, char *buf, size_t size, off_t offset, stru
 - Gunakan `read` untuk mendapatkan ukuran byte dan mengcopy isi ke dalam buffer yang sudah dibuat.
 - Selanjutnya gunakan looping kembali untuk mengecek apakah hasil buffer adalah sebuah text atau gambar
 - Nah jika merupakan teks kita langsung panggil fungsi `filter_text()` dan `memcpy` ke `buf` untuk ditampilkan di terminal, sebaliknya jika itu adalah gambar maka kita panggil `base64_encode` dan hasil encode nya kita `memcpy` ke buf untuk ditampilkan.
+#### Output
+![image](https://github.com/rdtzaa/assets/blob/06accd89cc5f5b3174ab0da073d385049b12c202/Sistem%20Operasi/filter_text_gambar.png)
 
 ### d. Logging Akses
 
@@ -397,6 +407,8 @@ static void log_access(const char *action, const char *path) {
 - Dapatkan uid dengan `fuse_get_context` agar mendapatkan uid yang mengakses mount point tersebut
 - `fprintf` untuk mencatat ke dalam file log dengan action READ atau ACCESS dan diakhiri `fclose` untuk menutup file.
 - Fungsi ini akan dipanggil di akhir fungsi `xmp_access` dan `xmp_read`.
+#### Output
+![image](https://github.com/rdtzaa/assets/blob/06accd89cc5f5b3174ab0da073d385049b12c202/Sistem%20Operasi/log.png)
 
 ### e. Konfigurasi
 
@@ -469,3 +481,5 @@ int main(int argc, char *argv[]) {
 - Gunakan `fopen` untuk membuka path file log yang dibuat yaitu `/var/log/lawakfs/log`
 - Gunakan `trim()` untuk menghapus kemungkinan spasi dalam mengisi config
 - Gunakan `while` loop untuk mengecek setiap baris dari config tersebut dan gunakan `strtok` untuk mengatasi kata kunci yang lebih dari satu sehingga membutuhkan tanda koma.
+#### Output
+![image](https://github.com/rdtzaa/assets/blob/06accd89cc5f5b3174ab0da073d385049b12c202/Sistem%20Operasi/lawakconf.png)
